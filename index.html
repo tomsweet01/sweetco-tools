@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sweet Co. Vendor Email Tool</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #181818; --surface2: #222;
+    --border: #2e2e2e; --accent: #c8f060; --accent-dim: #a8cc48;
+    --text: #e8e8e8; --text-dim: #888; --text-muted: #555;
+    --green: #4ade80; --red: #f06060; --radius: 6px;
+    --font: 'Inter', sans-serif; --mono: 'IBM Plex Mono', monospace;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; padding: 24px; }
+  .app { max-width: 860px; margin: 0 auto; }
+  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 28px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); }
+  header span { color: var(--text-muted); font-size: 12px; font-family: var(--mono); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); font-family: var(--mono); }
+  select, textarea, input { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: var(--font); font-size: 13px; padding: 10px 12px; transition: border-color 0.15s; outline: none; width: 100%; }
+  select:focus, textarea:focus, input:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
+  textarea.output-area { min-height: 240px; font-family: var(--mono); font-size: 12.5px; color: #d4edaa; background: #111; border-color: #2a2a2a; }
+  .actions { display: flex; gap: 10px; margin: 16px 0; align-items: center; flex-wrap: wrap; }
+  button { font-family: var(--font); font-size: 13px; font-weight: 500; border: none; border-radius: var(--radius); cursor: pointer; padding: 10px 20px; transition: all 0.15s; }
+  .btn-primary { background: var(--accent); color: #0f0f0f; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-dim); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-gmail { background: #fff; color: #1a1a1a; display: flex; align-items: center; gap: 8px; }
+  .btn-gmail:hover:not(:disabled) { background: #f0f0f0; }
+  .btn-gmail:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-secondary { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: #555; color: var(--text); }
+  .status { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-left: auto; }
+  .status.loading { color: var(--accent); }
+  .status.error { color: var(--red); }
+  .status.success { color: var(--green); }
+  .output-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .output-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-family: var(--mono); }
+  .copy-btn { font-size: 11px; padding: 4px 10px; background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-family: var(--mono); }
+  .copy-btn:hover { color: var(--text); border-color: #555; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 5px 12px; border-radius: 100px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text-dim); transition: all 0.12s; user-select: none; }
+  .chip:hover { border-color: #555; color: var(--text); }
+  .chip.active { background: var(--accent); color: #0f0f0f; border-color: var(--accent); }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .gmail-row { display: flex; gap: 10px; align-items: flex-end; margin-top: 14px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .gmail-row .field { flex: 1; }
+  .gmail-status { font-family: var(--mono); font-size: 11px; margin-top: 6px; }
+  .gmail-link { color: var(--accent); font-size: 12px; font-family: var(--mono); margin-top: 4px; display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Sweet Co.</h1>
+    <span>// vendor email assistant</span>
+  </header>
+
+  <div class="field" style="margin-bottom:14px;">
+    <label>Email Type</label>
+    <div class="chip-row" id="emailTypeChips">
+      <div class="chip active" data-value="follow-up">Follow-up</div>
+      <div class="chip" data-value="po-status">PO Status</div>
+      <div class="chip" data-value="new-request">New Request</div>
+      <div class="chip" data-value="escalation">Escalation</div>
+      <div class="chip" data-value="intro">Intro</div>
+    </div>
+  </div>
+
+  <div class="field" style="margin-bottom:14px;">
+    <label>Vendor Type</label>
+    <div class="chip-row" id="vendorTypeChips">
+      <div class="chip active" data-value="co-packer">Co-packer</div>
+      <div class="chip" data-value="ingredient supplier">Ingredient</div>
+      <div class="chip" data-value="packaging vendor">Packaging</div>
+      <div class="chip" data-value="3PL / freight partner">3PL / Freight</div>
+      <div class="chip" data-value="vendor">Other</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="field">
+      <label>Vendor Name</label>
+      <input type="text" id="vendorName" placeholder="e.g. WePackItAll, ePac, Ingredion" />
+    </div>
+    <div class="field">
+      <label>Contact Name</label>
+      <input type="text" id="contactName" placeholder="e.g. Daniela, Spencer" />
+    </div>
+  </div>
+
+  <div class="field" style="margin-bottom:12px;">
+    <label>What do you want to accomplish?</label>
+    <input type="text" id="goalInput" placeholder="e.g. Get ETA on PO #1042, nudge on packaging proof, confirm production date" />
+  </div>
+
+  <div class="field" style="margin-bottom:12px;">
+    <label>Thread / Context (optional)</label>
+    <textarea id="threadInput" placeholder="Paste the email thread or relevant context here..."></textarea>
+  </div>
+
+  <div class="actions">
+    <button class="btn-primary" id="generateBtn" onclick="generateEmail()">Draft Email</button>
+    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+    <span class="status" id="statusMsg"></span>
+  </div>
+
+  <hr class="divider">
+
+  <div class="output-header">
+    <span class="output-label">Draft Output</span>
+    <button class="copy-btn" onclick="copyOutput()">Copy</button>
+  </div>
+  <textarea class="output-area" id="outputArea" placeholder="Your draft will appear here..." readonly></textarea>
+
+  <div class="gmail-row" id="gmailRow" style="display:none;">
+    <div class="field">
+      <label>Recipient Email</label>
+      <input type="email" id="recipientEmail" placeholder="vendor@example.com" />
+    </div>
+    <button class="btn-gmail" id="gmailBtn" onclick="sendToGmail()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 6C22 4.9 21.1 4 20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6ZM20 6L12 11L4 6H20ZM20 18H4V8L12 13L20 8V18Z" fill="#EA4335"/></svg>
+      Save to Gmail Drafts
+    </button>
+  </div>
+  <div id="gmailFeedback" style="margin-top:8px;"></div>
+</div>
+
+<script>
+  let selectedEmailType = 'follow-up';
+  let selectedVendorType = 'co-packer';
+  let parsedSubject = '';
+  let parsedBody = '';
+
+  function setupChips(groupId, onSelect) {
+    const chips = document.querySelectorAll(`#${groupId} .chip`);
+    chips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        chips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        onSelect(chip.dataset.value);
+      });
+    });
+  }
+
+  setupChips('emailTypeChips', v => selectedEmailType = v);
+  setupChips('vendorTypeChips', v => selectedVendorType = v);
+
+  function setStatus(msg, type) {
+    const el = document.getElementById('statusMsg');
+    el.textContent = msg;
+    el.className = 'status ' + (type || '');
+  }
+
+  function parseDraft(text) {
+    const lines = text.split('\n');
+    const subjectIdx = lines.findIndex(l => l.toLowerCase().startsWith('subject:'));
+    if (subjectIdx === -1) { parsedSubject = ''; parsedBody = text.trim(); return; }
+    parsedSubject = lines[subjectIdx].replace(/^subject:\s*/i, '').trim();
+    parsedBody = lines.slice(subjectIdx + 1).join('\n').trim();
+  }
+
+  async function generateEmail() {
+    const goal = document.getElementById('goalInput').value.trim();
+    const thread = document.getElementById('threadInput').value.trim();
+    const vendor = document.getElementById('vendorName').value.trim();
+    const contact = document.getElementById('contactName').value.trim();
+
+    if (!goal && !thread) { setStatus('Add a goal or thread first.', 'error'); return; }
+
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = true;
+    setStatus('Drafting...', 'loading');
+    document.getElementById('outputArea').value = '';
+    document.getElementById('gmailRow').style.display = 'none';
+    document.getElementById('gmailFeedback').innerHTML = '';
+
+    const system = `You are an email drafting assistant for Tom Melcher, COO of The Sweet Company, a high-growth CPG sugar alternative brand in launch phase.
+
+Tom's writing style: direct, concise, casual but professional. No fluff, no buzzwords, no em dashes. Short paragraphs. Gets to the point in the first line. Friendly but no-nonsense. Signs off as Tom.
+
+Output ONLY the email. No preamble, no explanation, no intro. Format exactly:
+
+Subject: [subject line]
+
+[email body]`;
+
+    const user = `Write a ${selectedEmailType} email to ${contact || 'the contact'} at ${vendor || 'the vendor'}, who is a ${selectedVendorType}.
+${goal ? '\nGoal: ' + goal : ''}${thread ? '\n\nThread / context:\n' + thread : ''}
+
+Keep it short. One clear ask. Tom's voice.`;
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system,
+          messages: [{ role: 'user', content: user }]
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || 'API error');
+      const draft = data.content?.find(b => b.type === 'text')?.text || '';
+      document.getElementById('outputArea').value = draft;
+      parseDraft(draft);
+      setStatus('Done.', '');
+      document.getElementById('gmailRow').style.display = 'flex';
+    } catch (err) {
+      setStatus('Error: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function sendToGmail() {
+    const email = document.getElementById('recipientEmail').value.trim();
+    if (!email) {
+      document.getElementById('gmailFeedback').innerHTML = '<span class="gmail-status" style="color:#f06060;">Enter a recipient email first.</span>';
+      return;
+    }
+    if (!parsedBody) {
+      document.getElementById('gmailFeedback').innerHTML = '<span class="gmail-status" style="color:#f06060;">Generate a draft first.</span>';
+      return;
+    }
+
+    const btn = document.getElementById('gmailBtn');
+    btn.disabled = true;
+    document.getElementById('gmailFeedback').innerHTML = '<span class="gmail-status" style="color:#c8f060;">Saving to Gmail drafts...</span>';
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: `Create a Gmail draft email. To: ${email}. Subject: ${parsedSubject}. Body: ${parsedBody}` }],
+          mcp_servers: [{ type: 'url', url: 'https://gmailmcp.googleapis.com/mcp/v1', name: 'gmail-mcp' }]
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || 'API error');
+      document.getElementById('gmailFeedback').innerHTML = '<span class="gmail-status" style="color:#4ade80;">Draft saved to Gmail. Open Gmail to review and send.</span>';
+    } catch (err) {
+      document.getElementById('gmailFeedback').innerHTML = `<span class="gmail-status" style="color:#f06060;">Error: ${err.message}</span>`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function copyOutput() {
+    const text = document.getElementById('outputArea').value;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = 'Copied';
+      setTimeout(() => btn.textContent = 'Copy', 1500);
+    });
+  }
+
+  function clearAll() {
+    ['threadInput','goalInput','vendorName','contactName','outputArea','recipientEmail']
+      .forEach(id => document.getElementById(id).value = '');
+    document.getElementById('gmailRow').style.display = 'none';
+    document.getElementById('gmailFeedback').innerHTML = '';
+    parsedSubject = '';
+    parsedBody = '';
+    setStatus('', '');
+  }
+</script>
+</body>
+</html>
